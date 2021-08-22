@@ -64,8 +64,94 @@ func WrapSubscriber(w ...server.SubscriberWrapper) Option
     将一系列subscriber中间件传给server，并初始化
 ```
 
-# 六、结合consul实现服务发现与注册
+# 六、micro 结合 consul 实现服务发现与注册
 ![consul](./doc/consul.png)
+
+> go-micro v3 插件使用参考链接：https://github.com/asim/go-micro/tree/master/plugins
+
+**测试代码结构**
+- 客户端
+    ```
+    gin_client_consul
+    ```
+   > 复制 gin_client 代码，并添加上 consul 服务发现
+- 服务端
+    ```
+    micro_server_consul_01
+    micro_server_consul_02
+    ```
+    > 复制 micro_server 代码，并加上注册服务到 consul
+
+## （一）go-micro v3 consul插件的使用
+### 1. 下载go-micro v3 consul插件
+    ```
+    go get github.com/asim/go-micro/plugins/registry/consul/v3
+    ```
+### 2. 初始化 consul 
+    ```
+    // 创建 consul 服务
+    func initConsul() registry.Registry {
+    	consulReg := consul.NewRegistry(
+    		registry.Addrs("192.168.0.102:8500"),
+    	)
+    	return consulReg
+    }
+    ```
+
+### 3. [服务端] 注册 micro 服务到 consul
+   
+   启动服务「go run main.go」即自动注册 micro 服务到 consul
+   
+    ```
+    // 创建服务
+    service := micro.NewService(
+        micro.Name("micro.user.server"),
+        micro.Address(":8081"),
+        
+        // 注册 micro 服务到 consul
+        micro.Registry(consulReg),
+    )    
+    ```
+    
+#### （1）运行效果
+1. 启动 micro_server_consul_01：go run main.go
+![启动 micro_server_consul_01](./doc/consul_server_8081.png)
+2. 启动 micro_server_consul_02：go run main.go
+![启动 micro_server_consul_02](./doc/consul_server_8082.png)
+ 
+### 4. [客户端] 发现已注册到 consul 的 micro 服务
+#### （1）初始化 consul 
+    ```
+    // 创建 consul 服务
+    func initConsul() registry.Registry {
+        consulReg := consul.NewRegistry(
+            registry.Addrs("192.168.0.102:8500"),
+        )
+        return consulReg
+    }
+    ```
+#### （2）发现已注册到 consul 的 micro 服务
+    ```
+    // 创建micro服务
+    microUserServer := web.NewService(
+        web.Name("micro.user.web.server"),
+        web.Handler(gin),
+        
+        // 发现已注册到 consul 的 micro 服务
+        web.Registry(consulReg),
+    )   
+    ```
+#### （3）运行效果
+1. 启动 gin_client_consul 服务：go run main.go
+2. 调用 gin_client_consul 提供的 http 服务
+
+    随机调用发现已注册到 consul 的 micro 服务
+
+    ![调用 gin_client_consul 提供的 http 服务](./doc/consul_client.png)
+    
+ 
+    
+    
 
 
 
